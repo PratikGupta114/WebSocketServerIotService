@@ -2,6 +2,7 @@
 import express from "express";
 import { appConfiguration } from "./config";
 import { createClient } from "redis"
+import { createWebsocketConnectionsMetricDescriptor, updateWebsocketConnectionsMetricDescriptor } from "./Monitoring";
 
 const app = express();
 
@@ -9,6 +10,7 @@ type ClientConnectionRecord = {
     connectedPath: string;
     instanceID?: string;
     instanceName?: string;
+    lastPongReceived: number;
 }
 
 const client = createClient({
@@ -87,3 +89,42 @@ app.listen(appConfiguration.port, () => {
 setInterval(() => {
     console.log("Updating metrics");
 }, appConfiguration.connectionMetricUpdateIntervalMillis);
+
+if (appConfiguration.buildType !== "development") {
+    // Once the server is up and runnning, make an attempt to create the metric
+    console.log("Not running in development mode", appConfiguration.buildType);
+
+    try {
+        (async () => await createWebsocketConnectionsMetricDescriptor())();
+        console.log("Successfully created metric");
+    } catch (err) {
+        console.error(err);
+    }
+
+    setInterval(async () => {
+        try {
+            const keys = await client.keys("*");
+            const count = keys.length;
+
+            console.log("Curernt web socket clients : ", count);
+            await updateWebsocketConnectionsMetricDescriptor(
+                count,
+                appConfiguration.port
+            );
+            console.log("Successfully updated metric");
+        } catch (error) {
+            console.error(error);
+        }
+    }, appConfiguration.connectionMetricUpdateIntervalMillis);
+}
+
+setInterval(async () => {
+    const keys = await client.keys("*");
+    for (const key of keys) {
+        const record: ClientConnectionRecord = JSON.parse(String(await client.get(key)) || "");
+        const now = new Date().getTime();
+        if (now - record.lastPongReceived >= appConfiguration.connectionTimoutDurationMillis) {
+            await client.del(key);
+        }
+    }
+}, appConfiguration.connectionTerminationCheckInterval);

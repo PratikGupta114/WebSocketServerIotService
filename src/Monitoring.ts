@@ -168,6 +168,4 @@ async function deleteWebSocketConnectionsMetricDescriptor() {
     console.log(`Deleted ${metricId}`, result);
 }
 deleteWebSocketConnectionsMetricDescriptor().then(() => console.log("Deleted")).catch((error) => console.error(error));
-
-
  */
