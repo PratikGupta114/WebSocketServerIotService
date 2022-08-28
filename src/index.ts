@@ -1,10 +1,13 @@
 
 import express from "express";
+var cors = require('cors')
 import { appConfiguration } from "./config";
 import { createClient } from "redis"
 import { createWebsocketConnectionsMetricDescriptor, updateWebsocketConnectionsMetricDescriptor } from "./Monitoring";
 
 const app = express();
+
+app.use(cors()) 
 
 type ClientConnectionRecord = {
     connectedPath: string;
@@ -54,7 +57,7 @@ app.get("/activeConnections", async (req, res) => {
             deviceID: key
         });
     }
-
+    res.setRequestHeader(' Access-Control-Allow-Origin', '*');
     res.status(200).send({
         message: `Total Connections : ${count}`,
         count,
