@@ -57,7 +57,6 @@ app.get("/activeConnections", async (req, res) => {
             deviceID: key
         });
     }
-    res.setRequestHeader(' Access-Control-Allow-Origin', '*');
     res.status(200).send({
         message: `Total Connections : ${count}`,
         count,
